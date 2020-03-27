@@ -50,22 +50,32 @@ class Node:
         for car in self.vertical_cars:
             [last_row, last_col] = car[-1]  # extract the end of the car
             [first_row, first_col] = car[0]  # extract the beginning of the car
-            if last_row + 1 < 6:
-                if self.board[last_row + 1][last_col] == '.':
-                    self.successors.append(self.makeNewBoard([last_row, last_col], 1, car, False))
-            if first_row - 1 > -1:
-                if self.board[last_row - 1][first_col] == '.':
-                    self.successors.append(self.makeNewBoard([first_row, first_col], -1, car, False))
+            for i in range(1, 6):
+                if last_row + i < self.size:
+                    if self.board[last_row + i][last_col] == '.':
+                        self.successors.append(self.makeNewBoard([last_row, last_col], i, car, False))
+                    else:
+                        break
+                if first_row - i > -1:
+                    if self.board[last_row - i][first_col] == '.':
+                        self.successors.append(self.makeNewBoard([first_row, first_col], -i, car, False))
+                    else:
+                        break
 
         for car in self.horizontal_cars:
             [last_row, last_col] = car[-1]  # extract the end of the car
             [first_row, first_col] = car[0]  # extract the beginning of the car
-            if last_col + 1 < 6:
-                if self.board[last_row][last_col + 1] == '.':
-                    self.successors.append(self.makeNewBoard([last_row, last_col], 1, car, True))
-            if first_col - 1 > -1:
-                if self.board[first_row][first_col - 1] == '.':
-                    self.successors.append(self.makeNewBoard([first_row, first_col], -1, car, True))
+            for i in range(1, 6):
+                if last_col + i < self.size:
+                    if self.board[last_row][last_col + i] == '.':
+                        self.successors.append(self.makeNewBoard([last_row, last_col], i, car, True))
+                    else:
+                        break
+                if first_col - i > -1:
+                    if self.board[first_row][first_col - i] == '.':
+                        self.successors.append(self.makeNewBoard([first_row, first_col], -i, car, True))
+                    else:
+                        break
 
     # making the new board from the movement of the car
     def makeNewBoard(self, coordinate, index, car, is_horizontal):

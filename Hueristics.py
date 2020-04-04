@@ -16,11 +16,29 @@ def advancedBlocking(board):
             # now we need to check if the blocking car is blocked
             for i in range(1, board_length):
                 if col + i < board_length:
-                    if board_state[main_row][col + i] != '.' and board_state[main_row][col + i] != car_symbol:
+                    if board_state[main_row + i][col] != '.' and board_state[main_row + i][col] != car_symbol:
                         heuristic_value += 1
                         break
                 if col - i > -1:
-                    if board_state[main_row][col - i] != '.' and board_state[main_row][col - i] != car_symbol:
+                    if board_state[main_row - i][col] != '.' and board_state[main_row - i][col] != car_symbol:
                         heuristic_value += 1
                         break
+    return heuristic_value
+
+
+""" VerticalFromRight heuristic - InAdmissible
+    Calculates the Number of vertical cars to the right of the main car  +
+    1 extra point for each vertical car with length 3"""
+
+
+def verticalFromRight(board):
+    board_length = board.board_length
+    board_state = board.board_state
+    [main_row, main_col] = board.main_car[0][-1]  # the end of the main car (right end)
+    heuristic_value = 0
+    for col in range(main_col + 1, board_length):
+        for row in range(0, board_length):
+            if board_state[row][col] != '.' and board_state[row][col] == board_state[row + 1][col]:
+                heuristic_value += 1
+
     return heuristic_value

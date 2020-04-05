@@ -2,6 +2,7 @@ import numpy as np
 import GameNodes
 from Board import Board
 from Hueristics import advancedBlocking
+import Algorithm
 from Const import puzzles
 
 
@@ -19,6 +20,5 @@ if __name__ == "__main__":
     initial_board = Board(initial_board)
     initial_board.findCars()
     root = GameNodes.Node(initial_board)
-    root.generateVerticalSuccessors()
-    root.generateHorizontalSuccessors()
-    value = advancedBlocking(initial_board)
+    result = Algorithm.aStarSearch(root)
+    print(result.board.board_state)

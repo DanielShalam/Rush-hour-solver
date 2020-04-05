@@ -57,6 +57,7 @@ class Node:
 
     def isGoal(self):
         main_row, main_col = self.board.main_car[-1]
+        print(main_col)
         for col in range(main_col, self.board.board_length):
             if self.board.board_state[main_row][col] != '.':
                 return False

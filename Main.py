@@ -1,11 +1,12 @@
 import numpy as np
 import GameNodes
 from Board import Board
-import Algorithm
+from Algorithm import *
 from Const import puzzles
+from multiprocessing import Process, Queue
 
 
-#   initialize board from given puzzle (string)
+#   initialize board as numpy array from given puzzle (string)
 def initFromString(puzzle):
     board = np.chararray((1, 36))
     board[:] = [char for char in puzzle]
@@ -14,11 +15,22 @@ def initFromString(puzzle):
 
 
 if __name__ == "__main__":
-    #   for p in puzzles:
-    initial_board = initFromString("AA...OP..Q.OPXXQ.OP..Q..B...CCB.RRR.")
-    print(initial_board)
-    initial_board = Board(initial_board)
-    root = GameNodes.Node(initial_board)
-    result = Algorithm.aStarSearch(root)
-    print("Game is done: ")
-    print(result.board.board_state)
+    time_limit = 1000*60
+    for p in puzzles:
+        return_queue = Queue()
+        initial_board = initFromString(p)
+        print(initial_board)
+        initial_board = Board(initial_board)
+        root = GameNodes.Node(initial_board)
+        p = Process(target=aStarSearch, name="aStarSearch", args=(root, ))
+        p.start()
+        p.join(time_limit)
+
+        if p.is_alive():
+
+            # Terminate A*
+            p.terminate()
+            p.join()
+
+
+

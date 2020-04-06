@@ -5,6 +5,7 @@ from GameNodes import Node
 
 
 def aStarSearch(start_node):
+    nodes_counter = 0
     hash_for_open = {}
     open_list = FibonacciHeap()
     closed_list = dict()
@@ -23,11 +24,14 @@ def aStarSearch(start_node):
         current_node = fib_node.value
         current_string_for_hash = np.array2string(current_node.board.board_state, precision=2, separator=',',
                                                   suppress_small=True)
-        print(current_node.board.board_state)
+        nodes_counter += 1
+        # print(current_node.board.board_state)
         closed_list[current_string_for_hash] = current_node
 
         if current_node.isGoal():
-            return current_node
+            print("Solution: \n", current_node.board.board_state)
+            print("Number of checked nodes:", nodes_counter)
+            return
 
         current_node.generateHorizontalSuccessors()
         current_node.generateVerticalSuccessors()
@@ -81,6 +85,6 @@ def IDAStar(node):
     threshold = 0
     is_goal_node_found = False
     while is_goal_node_found is False:
-        new_scores, is_goal_node_found = aStarSearch(node)
-        passed = (x for x in new_scores if x > threshold)
-        threshold = min(passed)
+        aStarSearch(node)
+        #passed = (x for x in new_scores if x > threshold)
+        #threshold = min(passed)

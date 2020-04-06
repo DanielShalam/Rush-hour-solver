@@ -10,7 +10,6 @@ def initFromString(puzzle):
     board = np.chararray((1, 36))
     board[:] = [char for char in puzzle]
     board = np.reshape(board, (6, 6))
-    print(board[1][1] == b'.')
     return board
 
 

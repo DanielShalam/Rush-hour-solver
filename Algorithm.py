@@ -1,21 +1,30 @@
 import Hueristics
 from FiboHeap import *
+import numpy as np
+from GameNodes import Node
 
 
 def aStarSearch(start_node):
+    hash_for_open = {}
     open_list = FibonacciHeap()
     closed_list = dict()
     current_node = start_node
     f = Hueristics.advancedBlocking(start_node.board)
-    open_list.insert(f, start_node.board.board_state, start_node)
-    while open_list.min_node is not None:
+    current_string_for_hash = np.array2string(current_node.board.board_state, precision=2, separator=',',
+                                              suppress_small=True)
+    open_list.insert(f, current_node)
+    hash_for_open[current_string_for_hash] = current_node
+
+    while open_list.find_min() is not None:
         # Take from the open list the node current_node_ with the lowest
         # f(current_node) = g(current_node) + h(current_node)
 
-        temp_fibo_node = open_list.extract_min()
-        current_node = temp_fibo_node.game_node
-        print(current_node.h)
+        fib_node = open_list.extract_min()
+        current_node = fib_node.value
+        current_string_for_hash = np.array2string(current_node.board.board_state, precision=2, separator=',',
+                                                  suppress_small=True)
         print(current_node.board.board_state)
+        closed_list[current_string_for_hash] = current_node
 
         if current_node.isGoal():
             return current_node
@@ -24,37 +33,39 @@ def aStarSearch(start_node):
         current_node.generateVerticalSuccessors()
 
         for successor in current_node.successors:
+            successor_string_for_hash = np.array2string(successor.board.board_state, precision=2, separator=',',
+                                                        suppress_small=True)
             successor.g = current_node.g + 1
             successor.h = Hueristics.advancedBlocking(successor.board)
             successor_evaluation_value = successor.g + successor.h
-            board_to_check = successor.board.board_state
-            bytes_board = board_to_check.tobytes()
-            for fibo_node in open_list.iterate(open_list.root_list):
+            # index_for_state_in_open = self.does_it_exist_in_open(state)
+            state_in_open: Node = hash_for_open.get(successor_string_for_hash)
+            exists_in_open = state_in_open is not None
 
-                if fibo_node is None:
-                    open_list.insert(successor_evaluation_value, board_to_check, successor)
-                    break
+            state_in_closed: Node = closed_list.get(successor_string_for_hash)
+            exists_in_closed: bool = state_in_closed is not None
 
-                elif (board_to_check == fibo_node.value).all():
-                    if successor.g <= current_node.g:
-                        continue
+            if not exists_in_closed and not exists_in_open:
+                hash_for_open[successor_string_for_hash] = successor
+                f = successor.h + successor.g
+                open_list.insert(f, successor)
 
-                elif bytes_board in closed_list.keys():
-                    if successor.g <= current_node.g:
-                        continue
+            elif exists_in_closed:
+                if (state_in_closed.g + state_in_closed.h) > (successor.h + successor.g):
+                    closed_list.pop(successor_string_for_hash)
+                    hash_for_open[successor_string_for_hash] = successor
+                    f = successor.h + successor.g
+                    open_list.insert(f, successor)
 
-                    # move successor from closed_list back to open_list
-                    open_list.insert(successor_evaluation_value, board_to_check, successor)
-                    del closed_list[bytes_board]
-                    break
+            else:
 
-                else:
+                if (state_in_open.h + state_in_open.g) > (successor.h + successor.g):
+                    #open_list.delete(((state_in_open.h + state_in_open.g), state_in_open))
+                    hash_for_open[successor_string_for_hash] = successor
+                    f = successor.h + successor.g
+                    open_list.insert(f, successor)
 
-                    open_list.insert(successor_evaluation_value, board_to_check, successor)
-                    successor.h = Hueristics.advancedBlocking(successor.board)
-                    break
-
-                closed_list.update({bytes_board: successor})
+                    # self.actual_game.move_car(state.car_name, self.get_opp_side(state.direction), state.steps)
 
     if current_node.isGoal() is False:
         return None

@@ -56,7 +56,12 @@ class Node:
 
     def isGoal(self):
         main_row, main_col = self.board.main_car[-1]
-        for col in range(main_col, self.board.board_length):
-            if self.board.board_state[main_row][col] != b'.':
+        index = 0
+        for i in range(1, self.board.board_length - main_col):
+            index = i
+            if self.board.board_state[main_row][main_col + i] != b'.':
                 return False
+
+        # Draw and return the Winning board
+        self.board = self.board.makeNewBoard([main_row, main_col], index, self.board.main_car, True)
         return True

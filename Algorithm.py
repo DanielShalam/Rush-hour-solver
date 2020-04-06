@@ -1,56 +1,63 @@
-from GameNodes import Node
-import numpy as np
-from queue import PriorityQueue
-from collections import deque
 import Hueristics
-import Board
+from FiboHeap import *
 
 
 def aStarSearch(start_node):
-    open_list = PriorityQueue()
-    closed_list = set()
+    open_list = FibonacciHeap()
+    closed_list = dict()
     current_node = start_node
     f = Hueristics.advancedBlocking(start_node.board)
-    open_list.put((f, start_node))
-
-    while open_list.empty() is False:
+    open_list.insert(f, start_node.board.board_state, start_node)
+    while open_list.min_node is not None:
         # Take from the open list the node current_node_ with the lowest
         # f(current_node) = g(current_node) + h(current_node)
 
-        f_value, current_node = open_list.get()
-        print(current_node)
+        temp_fibo_node = open_list.extract_min()
+        current_node = temp_fibo_node.game_node
+        print(current_node.h)
+        print(current_node.board.board_state)
+
         if current_node.isGoal():
             return current_node
 
-        current_node.generateVerticalSuccessors()
         current_node.generateHorizontalSuccessors()
+        current_node.generateVerticalSuccessors()
 
         for successor in current_node.successors:
             successor.g = current_node.g + 1
             successor.h = Hueristics.advancedBlocking(successor.board)
             successor_evaluation_value = successor.g + successor.h
+            board_to_check = successor.board.board_state
+            bytes_board = board_to_check.tobytes()
+            for fibo_node in open_list.iterate(open_list.root_list):
 
-            if successor in open_list:
-                if successor.g <= current_node.g:
-                    continue
+                if fibo_node is None:
+                    open_list.insert(successor_evaluation_value, board_to_check, successor)
+                    break
 
-            elif successor in closed_list:
-                if successor.g <= current_node.g:
-                    continue
+                elif (board_to_check == fibo_node.value).all():
+                    if successor.g <= current_node.g:
+                        continue
 
-                # move successor from closed_list back to open_list
-                open_list.put(successor_evaluation_value, successor)
-                closed_list.remove(successor)
+                elif bytes_board in closed_list.keys():
+                    if successor.g <= current_node.g:
+                        continue
 
-            else:
+                    # move successor from closed_list back to open_list
+                    open_list.insert(successor_evaluation_value, board_to_check, successor)
+                    del closed_list[bytes_board]
+                    break
 
-                open_list.put(successor_evaluation_value, successor)
-                successor.h = Hueristics.advancedBlocking(successor.board)
+                else:
 
-            closed_list.add(current_node)
+                    open_list.insert(successor_evaluation_value, board_to_check, successor)
+                    successor.h = Hueristics.advancedBlocking(successor.board)
+                    break
 
-    if current_node.isGoal() != 1:
-        return "none"
+                closed_list.update({bytes_board: successor})
+
+    if current_node.isGoal() is False:
+        return None
 
 
 # TODO - implement A* using threshold which is given from IDA*

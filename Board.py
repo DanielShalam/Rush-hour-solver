@@ -10,42 +10,44 @@ class Board:
         self.vertical_cars = []
         self.symbols = []  # list of symbols represent different cars
         self.board_length = board_length
+        self.findCars()
 
     # function to find the cars and the way they are on the board (horizontal/vertical)
     def findCars(self):
+        self.symbols.append(b'.')
+
         for row in range(0, self.board_length):
             for col in range(0, self.board_length):
-                if self.board_state[row][col] is not '.' and self.board_state[row][col] not in self.symbols:
+
+                if self.board_state[row][col] is not b'.' and self.board_state[row][col] not in self.symbols:
                     flag = False  # flags for letting us know if we found a car with length of 3
                     # check for vertical cars
                     if row + 2 < self.board_length:
-                        if self.board_state[row + 1][col] == self.board_state[row][col] and self.board_state[row + 2][
-                            col] == \
-                                self.board_state[row][col]:
+                        if self.board_state[row][col] == self.board_state[row + 1][col] == self.board_state[row + 2][col]:
                             self.vertical_cars.append([[row, col], [row + 1, col], [row + 2, col]])
                             self.symbols.append(self.board_state[row][col])
                             flag = True
+
                     if flag is False and row + 1 < self.board_length:  # if we didnt find car
-                        if self.board_state[row + 1][col] == self.board_state[row][col]:
+                        if self.board_state[row][col] == self.board_state[row + 1][col]:
                             self.vertical_cars.append([[row, col], [row + 1, col]])
                             self.symbols.append(self.board_state[row][col])
+
                     # check for horizontal car is we didnt find vertical one from the current coordinate
                     if col + 2 < self.board_length and flag is False:
-                        if self.board_state[row][col + 1] == self.board_state[row][col] and self.board_state[row][
-                            col + 2] == \
-                                self.board_state[row][col]:
-                            if self.board_state[row][col] == 'X':   # if the car is the main car
-                                self.main_car.append([[row, col], [row, col + 1], [row, col + 2]])
-                            else:
-                                self.horizontal_cars.append([[row, col], [row, col + 1], [row, col + 2]])
+                        if self.board_state[row][col] == self.board_state[row][col + 1] == self.board_state[row][col + 2]:
+                            self.horizontal_cars.append([[row, col], [row, col + 1], [row, col + 2]])
                             self.symbols.append(self.board_state[row][col])
                             flag = True
+
                     if flag is False and col + 1 < self.board_length:
-                        if self.board_state[row][col + 1] == self.board_state[row][col]:
-                            if self.board_state[row][col] == 'X':   # if the car is the main car
-                                self.main_car.append([[row, col], [row, col + 1]])
-                            else:
-                                self.horizontal_cars.append([[row, col], [row, col + 1]])
+                        if self.board_state[row][col] == b'X':
+                            self.main_car.extend([[row, col], [row, col + 1]])
+                            self.horizontal_cars.append([[row, col], [row, col + 1]])
+                            self.symbols.append(self.board_state[row][col])
+
+                        elif self.board_state[row][col] == self.board_state[row][col + 1]:
+                            self.horizontal_cars.append([[row, col], [row, col + 1]])
                             self.symbols.append(self.board_state[row][col])
 
     # making the new board from the movement of the car
@@ -55,7 +57,7 @@ class Board:
         symbol = self.board_state[row][col]
 
         for rows, cols in car:  # cleaning the new board from the previous car
-            temp_board[rows][cols] = '.'
+            temp_board[rows][cols] = b'.'
 
         for rows, cols in car:
             if is_horizontal is True:  # change the coordinates due to the movement (horizontal/vertical)

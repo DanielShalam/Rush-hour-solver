@@ -82,10 +82,10 @@ def verticalFromRight(board):
     board_state = board.board_state
     [main_row, main_col] = board.main_car[-1]  # the end of the main car (right end)
     heuristic_value = 0
-    for i in range(1, board_length-main_col):
-        for row in range(0, board_length-1):
+    for i in range(1, board_length - main_col):
+        for row in range(0, board_length - 1):
             if board_state[row][main_col + i] != b'.' and board_state[row][main_col + i] == \
-                                                            board_state[row + 1][main_col + i]:
+                    board_state[row + 1][main_col + i]:
                 heuristic_value += 1
 
     return heuristic_value

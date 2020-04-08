@@ -5,8 +5,11 @@ from GameNodes import Node
 from time import time
 from math import inf
 
+# heuristic for un-informed search
+NULL_HEURISTIC = 0
 
-def aStarSearch(start_node, heuristic, return_queue):
+
+def aStarSearch(start_node, heuristic):
     # initialize some vars
     sum_heuristics = 0
     max_depth = 0
@@ -22,8 +25,10 @@ def aStarSearch(start_node, heuristic, return_queue):
         f = Hueristics.advancedBlocking(start_node.board)
     elif heuristic is 2:
         f = Hueristics.advancedDoubleBlocking(start_node.board)
-    else:
+    elif heuristic is 3:
         f = Hueristics.verticalFromRight(start_node.board)
+    else:
+        f = NULL_HEURISTIC
 
     sum_heuristics += f
 
@@ -49,15 +54,8 @@ def aStarSearch(start_node, heuristic, return_queue):
 
         if current_node.isGoal():
             elapsed_time = time() - start_time  # calculate the total time for solving
-            return_queue.put(elapsed_time)  # return total time
-            return_queue.put(nodes_counter)  # return number of nodes that been explored
-            return_queue.put(current_node.board.board_state)  # return the solution
-            return_queue.put(current_node.g)  # return the final_depth
-            return_queue.put(sum_heuristics)
-            return_queue.put(max_depth)
-            return_queue.put(sum_depth)
-            return_queue.put(min_depth)
-            return
+            return [elapsed_time, nodes_counter, current_node.board.board_state, current_node.g, sum_heuristics,
+                    max_depth, sum_depth, min_depth]
 
         current_node.generateHorizontalSuccessors()
         current_node.generateVerticalSuccessors()
@@ -78,8 +76,10 @@ def aStarSearch(start_node, heuristic, return_queue):
                 successor.h = Hueristics.advancedBlocking(start_node.board)
             elif heuristic is 2:
                 successor.h = Hueristics.advancedDoubleBlocking(start_node.board)
-            else:
+            elif heuristic is 3:
                 successor.h = Hueristics.verticalFromRight(start_node.board)
+            else:
+                successor.h = NULL_HEURISTIC
 
             sum_heuristics += successor.h
             # index_for_state_in_open = self.does_it_exist_in_open(state)
@@ -110,8 +110,11 @@ def aStarSearch(start_node, heuristic, return_queue):
 
                     # self.actual_game.move_car(state.car_name, self.get_opp_side(state.direction), state.steps)
 
+    # if we didnt find solution at all
     if current_node.isGoal() is False:
-        return None
+        elapsed_time = time() - start_time  # calculate the total time for solving
+        return [elapsed_time, nodes_counter, 'FAILED ', current_node.g, sum_heuristics,
+                max_depth, sum_depth, min_depth]
 
 
 # TODO - implement A* using threshold which is given from IDA*

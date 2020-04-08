@@ -2,15 +2,31 @@ import Hueristics
 from FiboHeap import *
 import numpy as np
 from GameNodes import Node
+from time import time
+from math import inf
 
 
-def aStarSearch(start_node):
+def aStarSearch(start_node, heuristic, return_queue):
+    # initialize some vars
+    sum_heuristics = 0
+    max_depth = 0
+    sum_depth = 0
+    min_depth = inf
+    start_time = time()
     nodes_counter = 0
     hash_for_open = {}
     open_list = FibonacciHeap()
     closed_list = dict()
     current_node = start_node
-    f = Hueristics.advancedBlocking(start_node.board)
+    if heuristic is 1:
+        f = Hueristics.advancedBlocking(start_node.board)
+    elif heuristic is 2:
+        f = Hueristics.advancedDoubleBlocking(start_node.board)
+    else:
+        f = Hueristics.verticalFromRight(start_node.board)
+
+    sum_heuristics += f
+
     current_string_for_hash = np.array2string(current_node.board.board_state, precision=2, separator=',',
                                               suppress_small=True)
     open_list.insert(f, current_node)
@@ -21,27 +37,51 @@ def aStarSearch(start_node):
         # f(current_node) = g(current_node) + h(current_node)
 
         fib_node = open_list.extract_min()
-        current_node = fib_node.value
+        temp_current_node = fib_node.value
+        if current_node.g < max_depth and temp_current_node not in current_node.successors:
+            min_depth = current_node.g
+
+        current_node = temp_current_node
         current_string_for_hash = np.array2string(current_node.board.board_state, precision=2, separator=',',
                                                   suppress_small=True)
-        nodes_counter += 1
         # print(current_node.board.board_state)
         closed_list[current_string_for_hash] = current_node
 
         if current_node.isGoal():
-            print("Solution: \n", current_node.board.board_state)
-            print("Number of checked nodes:", nodes_counter)
+            elapsed_time = time() - start_time  # calculate the total time for solving
+            return_queue.put(elapsed_time)  # return total time
+            return_queue.put(nodes_counter)  # return number of nodes that been explored
+            return_queue.put(current_node.board.board_state)  # return the solution
+            return_queue.put(current_node.g)  # return the final_depth
+            return_queue.put(sum_heuristics)
+            return_queue.put(max_depth)
+            return_queue.put(sum_depth)
+            return_queue.put(min_depth)
             return
 
         current_node.generateHorizontalSuccessors()
         current_node.generateVerticalSuccessors()
 
         for successor in current_node.successors:
+            nodes_counter += 1
             successor_string_for_hash = np.array2string(successor.board.board_state, precision=2, separator=',',
                                                         suppress_small=True)
             successor.g = current_node.g + 1
-            successor.h = Hueristics.advancedBlocking(successor.board)
-            successor_evaluation_value = successor.g + successor.h
+
+            # check if we have new max depth
+            if successor.g > max_depth:
+                max_depth = successor.g
+
+            sum_depth += successor.g
+            # calculate heuristic value
+            if heuristic is 1:
+                successor.h = Hueristics.advancedBlocking(start_node.board)
+            elif heuristic is 2:
+                successor.h = Hueristics.advancedDoubleBlocking(start_node.board)
+            else:
+                successor.h = Hueristics.verticalFromRight(start_node.board)
+
+            sum_heuristics += successor.h
             # index_for_state_in_open = self.does_it_exist_in_open(state)
             state_in_open: Node = hash_for_open.get(successor_string_for_hash)
             exists_in_open = state_in_open is not None
@@ -62,9 +102,8 @@ def aStarSearch(start_node):
                     open_list.insert(f, successor)
 
             else:
-
                 if (state_in_open.h + state_in_open.g) > (successor.h + successor.g):
-                    #open_list.delete(((state_in_open.h + state_in_open.g), state_in_open))
+                    # open_list.delete(((state_in_open.h + state_in_open.g), state_in_open))
                     hash_for_open[successor_string_for_hash] = successor
                     f = successor.h + successor.g
                     open_list.insert(f, successor)
@@ -86,5 +125,5 @@ def IDAStar(node):
     is_goal_node_found = False
     while is_goal_node_found is False:
         aStarSearch(node)
-        #passed = (x for x in new_scores if x > threshold)
-        #threshold = min(passed)
+        # passed = (x for x in new_scores if x > threshold)
+        # threshold = min(passed)

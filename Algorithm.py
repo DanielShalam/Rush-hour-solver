@@ -4,19 +4,27 @@ import numpy as np
 from GameNodes import Node
 from time import time
 from math import inf
+from threading import Lock
 
-# heuristic for un-informed search
-NULL_HEURISTIC = 0
+NULL_HEURISTIC = 0  # heuristic for un-informed search
+lock = Lock()
+sum_heuristics = 0
+max_depth = 0
+min_depth = inf
+sum_depth = 0  # will be used to calculate average depth
+nodes_counter = 0
 
 
-def aStarSearch(start_node, heuristic):
+def aStarSearch(start_node, heuristic, multi_threading, thread_id):
+    global max_depth
+    global min_depth
+    global sum_depth
+    global sum_heuristics
+    global nodes_counter
+
     # initialize some vars
-    sum_heuristics = 0
-    max_depth = 0
-    sum_depth = 0
-    min_depth = inf
+    round_counter = 1
     start_time = time()
-    nodes_counter = 0
     hash_for_open = {}
     open_list = FibonacciHeap()
     closed_list = dict()
@@ -30,7 +38,9 @@ def aStarSearch(start_node, heuristic):
     else:
         f = NULL_HEURISTIC
 
+    lock.acquire()
     sum_heuristics += f
+    lock.release()
 
     current_string_for_hash = np.array2string(current_node.board.board_state, precision=2, separator=',',
                                               suppress_small=True)
@@ -43,8 +53,11 @@ def aStarSearch(start_node, heuristic):
 
         fib_node = open_list.extract_min()
         temp_current_node = fib_node.value
+
+        lock.acquire()
         if current_node.g < max_depth and temp_current_node not in current_node.successors:
             min_depth = current_node.g
+        lock.release()
 
         current_node = temp_current_node
         current_string_for_hash = np.array2string(current_node.board.board_state, precision=2, separator=',',
@@ -57,20 +70,34 @@ def aStarSearch(start_node, heuristic):
             return [elapsed_time, nodes_counter, current_node.board.board_state, current_node.g, sum_heuristics,
                     max_depth, sum_depth, min_depth]
 
-        current_node.generateHorizontalSuccessors()
-        current_node.generateVerticalSuccessors()
+        #   generate successors due to thread terms (only at the first time)
+        if round_counter is 1 and multi_threading is True:
+            if thread_id is 1:
+                current_node.generateHorizontalSuccessors()
+            else:
+                current_node.generateVerticalSuccessors()
+            round_counter += 1
+        #   generate regular successors
+        else:
+            current_node.generateHorizontalSuccessors()
+            current_node.generateVerticalSuccessors()
 
         for successor in current_node.successors:
+            lock.acquire()
             nodes_counter += 1
+            lock.release()
+
             successor_string_for_hash = np.array2string(successor.board.board_state, precision=2, separator=',',
                                                         suppress_small=True)
             successor.g = current_node.g + 1
 
+            lock.acquire()
             # check if we have new max depth
             if successor.g > max_depth:
                 max_depth = successor.g
-
             sum_depth += successor.g
+            lock.release()
+
             # calculate heuristic value
             if heuristic is 1:
                 successor.h = Hueristics.advancedBlocking(start_node.board)
@@ -81,7 +108,9 @@ def aStarSearch(start_node, heuristic):
             else:
                 successor.h = NULL_HEURISTIC
 
+            lock.acquire()
             sum_heuristics += successor.h
+            lock.release()
             # index_for_state_in_open = self.does_it_exist_in_open(state)
             state_in_open: Node = hash_for_open.get(successor_string_for_hash)
             exists_in_open = state_in_open is not None
@@ -108,25 +137,9 @@ def aStarSearch(start_node, heuristic):
                     f = successor.h + successor.g
                     open_list.insert(f, successor)
 
-                    # self.actual_game.move_car(state.car_name, self.get_opp_side(state.direction), state.steps)
-
     # if we didnt find solution at all
     if current_node.isGoal() is False:
         elapsed_time = time() - start_time  # calculate the total time for solving
         return [elapsed_time, nodes_counter, 'FAILED ', current_node.g, sum_heuristics,
                 max_depth, sum_depth, min_depth]
 
-
-# TODO - implement A* using threshold which is given from IDA*
-""" IDA* search Algorithm - Uses information from each search to limit the search by Threshold value.
-    The Threshold value will be the smallest value that we found in the previous search that bigger from the previous Threshold.
-    In A* we will expend nodes which are smaller or equal to the given Threshold."""
-
-
-def IDAStar(node):
-    threshold = 0
-    is_goal_node_found = False
-    while is_goal_node_found is False:
-        aStarSearch(node)
-        # passed = (x for x in new_scores if x > threshold)
-        # threshold = min(passed)

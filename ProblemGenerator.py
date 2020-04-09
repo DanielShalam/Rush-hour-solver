@@ -35,7 +35,7 @@ def makePuzzle():
     while depth < 10:
         empty = Board(empty_board)
         new_node = GameNodes.Node(empty)
-        listed = Algorithm.aStarSearch(new_node, 1)
+        listed = Algorithm.aStarSearch(new_node, 1, multi_threading=False, thread_id=None)
         depth = listed[3]
         print(depth)
 

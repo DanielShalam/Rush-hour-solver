@@ -3,7 +3,7 @@ import GameNodes
 from Board import Board
 from Algorithm import *
 import pandas as pd
-import ProblemGenerator
+import PuzzleGenerator
 
 TIME_LIMIT = 0
 PUZZLES_NUM = 40
@@ -106,125 +106,115 @@ def getSolutions():
 
 
 if __name__ == '__main__':
-    # getting time limit input
-    TIME_LIMIT = float(input("Enter time limit for each puzzle (in seconds) : "))
-    # getting puzzles from rh.txt
-    PUZZLES = getPuzzles()
-    SOLUTIONS = getSolutions()
 
-    # initialize some vars
-    threadLock = threading.Lock()
-    threads = []
-    pd.set_option('display.max_columns', None)
-    columns_for_df = ['Problem ', 'Heuristic name ', 'N ', 'd/N ', 'Success (Y/N) ', 'Time (ms) ', 'EBF ',
-                      'avg H value ', 'Min ', 'Avg ', 'Max ', 'Compare to input ']
-    puzzle_counter = 0
-    statistics_df = pd.DataFrame(columns=columns_for_df)
-    solved_or_failed = [0, 0, 0, 0]
-    statistics_list = list()
+    command = int(input("To solve puzzle enter 1, To generate puzzle enter 2: "))
+    if command == 2:
+        requested_depth = int(input("Enter the depth of solution for the new puzzle: "))
+        PuzzleGenerator.generetePuzzle(requested_depth)
 
-    heuristics = [1, 2, 3, 4]
+    else:
+        # getting time limit input
+        TIME_LIMIT = float(input("Enter time limit for each puzzle (in seconds) : "))
+        # getting puzzles from rh.txt
+        PUZZLES = getPuzzles()
+        SOLUTIONS = getSolutions()
 
-    for heuristic in heuristics:
-        for idx, puzzle in enumerate(PUZZLES):
-            stop_threads = False
-            event = threading.Event()
-            print("------------------------------------ New puzzle ------------------------------------\n")
-            # create initial board
-            initial_board = initFromString(puzzle)
-            print(initial_board.astype('U13'), '\n')
-            initial_board = Board(initial_board)
+        # initialize some vars
+        threadLock = threading.Lock()
+        threads = []
+        pd.set_option('display.max_columns', None)
+        columns_for_df = ['Problem ', 'Heuristic name ', 'N ', 'd/N ', 'Success (Y/N) ', 'Time (ms) ', 'EBF ',
+                          'avg H value ', 'Min ', 'Avg ', 'Max ', 'Compare to input ']
+        puzzle_counter = 0
+        statistics_df = pd.DataFrame(columns=columns_for_df)
+        solved_or_failed = [0, 0, 0, 0]
+        statistics_list = list()
 
-            # creates 2 threads - solving for vertical and horizontal successors of the initial board in each thread
-            thread1 = myThread(1, "Thread-horizontal", 1)
-            thread2 = myThread(2, "Thread-vertical", 2)
-            root = GameNodes.Node(initial_board)
+        heuristics = [1, 2, 3, 4]
 
-            # run the threads
-            thread1.start()
-            thread2.start()
+        for heuristic in heuristics:
+            for idx, puzzle in enumerate(PUZZLES):
+                event = threading.Event()
+                print("------------------------------------ New puzzle ------------------------------------\n")
+                # create initial board
+                initial_board = initFromString(puzzle)
+                print(initial_board.astype('U13'), '\n')
+                initial_board = Board(initial_board)
 
-            # Add threads to thread list
-            threads.append(thread1)
-            threads.append(thread2)
+                # creates 2 threads - solving for vertical and horizontal successors of the initial board in each thread
+                thread1 = myThread(1, "Thread-horizontal", 1)
+                thread2 = myThread(2, "Thread-vertical", 2)
+                root = GameNodes.Node(initial_board)
 
-            # getting the output from the threads
-            while True:
-                if not threads[0].is_alive() and threads[1].is_alive():
-                    statistics_list = threads[0].returning()
-                    if type(statistics_list[2]) != str:
-                        break
-                elif not threads[1].is_alive() and threads[0].is_alive():
-                    statistics_list = threads[1].returning()
-                    if type(statistics_list[2]) != str:
-                        break
-                elif not threads[1].is_alive() and not threads[0].is_alive():
-                    statistics_list_1 = threads[1].returning()
-                    statistics_list_0 = threads[0].returning()
-                    if statistics_list_1 and not statistics_list_0:
+                # run the threads
+                thread1.start()
+                thread2.start()
+
+                # Add threads to thread list
+                threads.append(thread1)
+                threads.append(thread2)
+
+                thread1.join()
+                thread2.join()
+
+                # getting the output from the threads
+                statistics_list_1 = threads[1].returning()
+                statistics_list_0 = threads[0].returning()
+                if type(statistics_list_1[2]) is not str and type(statistics_list_0[2]) is str:
+                    statistics_list = statistics_list_1
+                elif type(statistics_list_0[2]) is not str and type(statistics_list_1[2]) is str:
+                    statistics_list = statistics_list_0
+                else:
+                    if statistics_list_1[0] <= statistics_list_0[0]:
                         statistics_list = statistics_list_1
-                    elif statistics_list_0 and not statistics_list_1:
-                        statistics_list = statistics_list_0
                     else:
-                        if type(statistics_list_1[2]) is not str and type(statistics_list_0[2]) is str:
-                            statistics_list = statistics_list_1
-                        elif type(statistics_list_0[2]) is not str and type(statistics_list_1[2]) is str:
-                            statistics_list = statistics_list_0
-                        else:
-                            if statistics_list_1[1] <= statistics_list_0[1]:
-                                statistics_list = statistics_list_1
-                            else:
-                                statistics_list = statistics_list_0
-                        break
+                        statistics_list = statistics_list_0
 
-            # getting statistics and displaying the result
-            if statistics_list[0] <= TIME_LIMIT and type(statistics_list[2]) is not str:
-                winner_state = statistics_list[2].astype('U13')
-                winner_state = np.array2string(winner_state.flatten(), precision=2, separator=',', suppress_small=True)
-                print(' Solution: \n', winner_state, '\n')
-                solved_or_failed[heuristic - 1] += 1
-            else:
-                print(' Solution: \n', statistics_list[2], '\n')
+                # getting statistics and displaying the result
+                if statistics_list[0] <= TIME_LIMIT and type(statistics_list[2]) is not str:
+                    winner_state = statistics_list[2].astype('U13')
+                    winner_state = np.array2string(winner_state.flatten(), precision=2, separator=',', suppress_small=True)
+                    print(' Solution: \n', winner_state, '\n')
+                    solved_or_failed[heuristic - 1] += 1
+                else:
+                    print(' Solution: \n', statistics_list[2], '\n')
+                # insert statistics to the data frame
+                if heuristic is 1:
+                    statistics_df = insertStatistics(statistics_df, statistics_list, 'Advanced Blocking', puzzle,
+                                                     puzzle_counter, SOLUTIONS[idx])
+                elif heuristic is 2:
+                    statistics_df = insertStatistics(statistics_df, statistics_list, 'Advanced Double Blocking', puzzle,
+                                                     puzzle_counter, SOLUTIONS[idx])
+                elif heuristic is 3:
+                    statistics_df = insertStatistics(statistics_df, statistics_list, 'Vertical From Right', puzzle,
+                                                     puzzle_counter, SOLUTIONS[idx])
+                else:
+                    statistics_df = insertStatistics(statistics_df, statistics_list, 'Uniformed search', puzzle,
+                                                     puzzle_counter, SOLUTIONS[idx])
+                puzzle_counter += 1
+                statistics_list.clear()
 
-            # insert statistics to the data frame
-            if heuristic is 1:
-                statistics_df = insertStatistics(statistics_df, statistics_list, 'Advanced Blocking', puzzle,
-                                                 puzzle_counter, SOLUTIONS[idx])
-            elif heuristic is 2:
-                statistics_df = insertStatistics(statistics_df, statistics_list, 'Advanced Double Blocking', puzzle,
-                                                 puzzle_counter, SOLUTIONS[idx])
-            elif heuristic is 3:
-                statistics_df = insertStatistics(statistics_df, statistics_list, 'Vertical From Right', puzzle,
-                                                 puzzle_counter, SOLUTIONS[idx])
-            else:
-                statistics_df = insertStatistics(statistics_df, statistics_list, 'Uniformed search', puzzle,
-                                                 puzzle_counter, SOLUTIONS[idx])
-            puzzle_counter += 1
-            statistics_list.clear()
-            for thread in threads:
-                thread.join()
+        #   print final statistics and save to csv file:
+        print('Global Statistics table: \n', statistics_df)
+        compression_opts = dict(method='zip', archive_name='statistics.csv')
+        statistics_df.to_csv('statistics.zip', index=False, compression=compression_opts)
 
-    # print final statistics and save to csv file:
-        #   print('Global Statistics table: \n', statistics_df)
-        #   compression_opts = dict(method='zip', archive_name='statistics.csv')
-        #   statistics_df.to_csv('statistics.zip', index=False, compression=compression_opts)
+        # print average statistics for each heuristic
+        init_index = 0
+        final_index = PUZZLES_NUM - 1
+        heuristics = ['Advanced blocking', 'Advanced double blocking', 'Vertical from right', 'Uninformed search']
+        print('Average Statistics for each heuristic: \n')
+        for idx, heuristic in enumerate(heuristics):
+            print('For', heuristic, 'heuristic:')
+            print('Number of solved puzzles:', solved_or_failed[idx - 1])
+            print('Average number of expended nodes:', statistics_df['N '].iloc[init_index:final_index].mean())
+            print('Average rate of penetrability:', statistics_df['d/N '].iloc[init_index:final_index].mean())
+            print('Average EBF value:', statistics_df['EBF '].iloc[init_index:final_index].mean())
+            print('Average heuristic value:', statistics_df['avg H value '].iloc[init_index:final_index].mean())
+            print('Average max depth:', statistics_df['Max '].iloc[init_index:final_index].mean())
+            print('Average min depth:', statistics_df['Min '].iloc[init_index:final_index].mean())
+            print('Average of depth Average:', statistics_df['Avg '].iloc[init_index:final_index].mean())
+            print('Average solving time:', statistics_df['Time (ms) '].iloc[init_index:final_index].mean(), '\n')
 
-    # print average statistics for each heuristic
-    init_index = 0
-    final_index = PUZZLES_NUM - 1
-    heuristics = ['Advanced blocking', 'Advanced double blocking', 'Vertical from right', 'Uninformed search']
-    print('Average Statistics for each heuristic: \n')
-    for idx, heuristic in enumerate(heuristics):
-        print('For', heuristic, 'heuristic:')
-        print('Number of solved puzzles:', solved_or_failed[idx - 1])
-        print('Average number of expended nodes:', statistics_df['N '].iloc[init_index:final_index].mean())
-        print('Average rate of penetrability:', statistics_df['d/N '].iloc[init_index:final_index].mean())
-        print('Average EBF value:', statistics_df['EBF '].iloc[init_index:final_index].mean())
-        print('Average heuristic value:', statistics_df['avg H value '].iloc[init_index:final_index].mean())
-        print('Average max depth:', statistics_df['Max '].iloc[init_index:final_index].mean())
-        print('Average min depth:', statistics_df['Min '].iloc[init_index:final_index].mean())
-        print('Average of depth Average:', statistics_df['Avg '].iloc[init_index:final_index].mean())
-        print('Average solving time:', statistics_df['Time (ms) '].iloc[init_index:final_index].mean(), '\n')
-
-        init_index += PUZZLES_NUM
-        final_index += PUZZLES_NUM
+            init_index += PUZZLES_NUM
+            final_index += PUZZLES_NUM

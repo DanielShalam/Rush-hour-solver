@@ -32,6 +32,9 @@ class Node:
                 else:
                     break
 
+    def __lt__(self, other):
+        return self.h + self.g < other.h + other.g
+
     def generateHorizontalSuccessors(self):
         board_state = self.board.board_state
         h_cars = self.board.horizontal_cars

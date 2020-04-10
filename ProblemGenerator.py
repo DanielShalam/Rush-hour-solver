@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import groupby
 from Board import Board
 import GameNodes
 import random
@@ -6,7 +7,15 @@ import Hueristics
 import Algorithm
 
 
-def makePuzzle():
+# generate puzzle
+# add the red car
+# keep adding cars while the depth of solution (return value of A*) is less then difficulty
+# place the new cars in blocking places 66% (selected from list)  or in random location 33%
+# add the blocking points of new added cars to list
+
+
+def makePuzzle(difficulty):
+    limit_depth = difficulty
     two_squares_car_symbols = ["A", "B", "C", "D", "E", "F"]  # list of symbols represent different cars
     three_squares_car_symbols = ["O", "P", "Q"]  # list of symbols represent different cars
     two_squares_car_symbols_index = 0
@@ -32,7 +41,7 @@ def makePuzzle():
     new_node = GameNodes.Node(empty)
     depth = 0  # 0 first iteration
     print(empty_board)
-    while depth < 10:
+    while depth < limit_depth:
         empty = Board(empty_board)
         new_node = GameNodes.Node(empty)
         listed = Algorithm.aStarSearch(new_node, 1, multi_threading=False, thread_id=None)
@@ -55,12 +64,15 @@ def makePuzzle():
         else:
             car_head = random.choice(blocking_cells_of_cars)
 
+        #  place the car
         if isLegalPlacement(empty_board, car_head, direction, car_type):
-            if canFit(empty_board, car_head, direction, car_type):
+            if canFit(empty_board, car_head, direction, car_type) \
+                    and doesNotBlockRedCar(car_head, direction, red_car_head_index) \
+                    and doesNotBlockingFullLineRow(empty_board, car_head, direction, car_type):
                 if car_type == 0 and len(two_squares_car_symbols) != 0:  # 2 square car
                     putCar(empty_board, car_head, direction, car_type, two_squares_car_symbols,
                            three_squares_car_symbols)
-                elif car_type == 1 and len(three_squares_car_symbols) != 0:
+                elif car_type == 1 and len(three_squares_car_symbols) != 0:  # 3 square truck
                     putCar(empty_board, car_head, direction, car_type, two_squares_car_symbols,
                            three_squares_car_symbols)
 
@@ -221,3 +233,83 @@ def findBlockingCell(board_state, car_head, direction, car_type):
         return cell
     else:
         return -1
+
+
+# make sure not blocking the front the red car with horizontal car placement
+def doesNotBlockRedCar(car_head, direction, red_car_head_index):
+    if direction == 1:  # horizontal
+        if car_head < red_car_head_index:
+            return 0
+    return 1
+
+
+# make sure not blocking the full line/row - 2 trucks or 3 cars in same line
+def doesNotBlockingFullLineRow(board_state, car_head, direction, car_type):
+    truck_right_blocking_cells = [3, 9, 15, 21, 27, 33]
+    truck_left_blocking_cells = [0, 6, 12, 18, 24, 30]
+    truck_bottom_blocking_cells = [18, 19, 20, 21, 22, 23]
+    truck_upper_blocking_cells = [0, 1, 2, 3, 4, 5]
+
+    trucks_symbols = ["O", "P", "Q"]  # list of truck symbols
+    two_squares_car_symbols = ["A", "B", "C", "D", "E", "F"]  # list of cars symbols
+    vertical_index = int(car_head / 6)
+    horizontal_index = int(car_head % 6)
+
+    if car_type == 1:  # truck
+        if direction == 1:  # horizontal
+            # check for line with truck
+            if car_head in truck_right_blocking_cells:
+                if (board_state[horizontal_index][vertical_index - 1] == board_state[horizontal_index][
+                    vertical_index - 2]) and \
+                        (board_state[horizontal_index][vertical_index - 2] == board_state[horizontal_index][
+                            vertical_index - 3]):
+                    return 0
+            elif car_head in truck_left_blocking_cells:
+                if (board_state[horizontal_index][vertical_index + 3] == board_state[horizontal_index][
+                    vertical_index + 4]) and \
+                        (board_state[horizontal_index][vertical_index + 4] == board_state[horizontal_index][
+                            vertical_index + 5]):
+                    return 0
+
+        else:  # vertical
+            # check for row with truck
+            if car_head in truck_upper_blocking_cells:
+                if (board_state[horizontal_index + 3][vertical_index] == board_state[horizontal_index + 4][
+                    vertical_index]) and \
+                        (board_state[horizontal_index + 4][vertical_index] == board_state[horizontal_index + 5][
+                            vertical_index]):
+                    return 0
+            elif car_head in truck_bottom_blocking_cells:  # [18, 19, 20, 21, 22, 23]
+                if (board_state[horizontal_index - 1][vertical_index] == board_state[horizontal_index - 2][
+                    vertical_index]) and \
+                        (board_state[horizontal_index - 2][vertical_index] == board_state[horizontal_index - 3][
+                            vertical_index]):
+                    return 0
+
+    else:  # car
+        if direction == 1:
+            cars_count = 0
+            line_symbols = []
+            for i in range(0, 6):
+                if board_state[horizontal_index][i] != b'.':
+                    line_symbols.append(board_state[horizontal_index][i])
+            pairs_count = [len(list(group)) for key, group in groupby(line_symbols)]
+            for count in pairs_count:
+                if count == 2:
+                    cars_count = cars_count + 1
+            if cars_count == 2:
+                return 0
+        else:  # direction == 0 horizontal
+            cars_count = 0
+            row_symbols = []
+            for i in range(0, 6):
+                if board_state[i][vertical_index] != b'.':
+                    row_symbols.append(board_state[i][vertical_index])
+            pairs_count = [len(list(group)) for key, group in groupby(row_symbols)]
+            for count in pairs_count:
+                if count == 2:
+                    cars_count = cars_count + 1
+            if cars_count == 2:
+                return 0
+
+    return 1

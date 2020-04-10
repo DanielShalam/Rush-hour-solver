@@ -18,13 +18,12 @@ def advancedBlocking(board):
             for i in range(1, board_length - main_row):
                 if main_row + i < board_length and board_state[main_row + i][col] != b'.':
                     if board_state[main_row + i][col] != car_symbol:
-                        heuristic_value += 1
                         flag = True
                         break
                 else:
                     break
 
-            if flag is False:
+            if flag is True:
                 for i in range(1, board_length - main_row):
                     if main_row - i < board_length and board_state[main_row - i][col] != b'.':
                         if board_state[main_row - i][col] != car_symbol:
@@ -51,7 +50,7 @@ def advancedDoubleBlocking(board):
     for col in range(main_col + 1, board_length):  # from the main car to the end
         if board_state[main_row][col] in board.symbols:
             car_symbol = board_state[main_row][col]  # the blocking car
-            heuristic_value += 3  # adding 1 to the heuristic for blocking car that we found
+            heuristic_value += 2  # adding 1 to the heuristic for blocking car that we found
             # now we need to check if the blocking car is blocked
             for i in range(1, board_length - main_row):
                 if main_row + i < board_length and board_state[main_row + i][col] != b'.':

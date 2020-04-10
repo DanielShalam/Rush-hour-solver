@@ -2,7 +2,6 @@ import threading
 import GameNodes
 from Board import Board
 from Algorithm import *
-from Const import puzzles
 import pandas as pd
 import ProblemGenerator
 
@@ -12,7 +11,7 @@ horizontal_list = []
 vertical_list = []
 
 
-#   customize new threading class for our needs
+#   customize new thread class for our needs
 class myThread(threading.Thread):
     def __init__(self, thread_id, name, counter):
         threading.Thread.__init__(self)
@@ -40,7 +39,7 @@ class myThread(threading.Thread):
 
 
 #   initialize board as numpy array from given puzzle (string)
-#   The board will be kept in bytes for optimization of certain operations
+#   The board will kept in bytes for optimization of certain operations
 def initFromString(_puzzle):
     board = np.chararray((1, 36))
     board[:] = [char for char in _puzzle]
@@ -49,31 +48,76 @@ def initFromString(_puzzle):
 
 
 #   function to insert statistics from each iteration to our goal data frame
-def insertStatistics(_statistics_df, statistics_list_, heuristic_name, _puzzle, _puzzle_counter):
+def insertStatistics(_statistics_df, statistics_list_, heuristic_name, _puzzle, _puzzle_counter, input_solution):
     if statistics_list_[0] <= TIME_LIMIT:
         solved = 'Y'
     else:
         solved = 'N'
+
     new_row = [_puzzle, heuristic_name, statistics_list_[1],
-               statistics_list_[3] / statistics_list_[1], solved, statistics_list_[0],
-               statistics_list_[1] ** (1 / statistics_list_[3]), statistics_list_[4] / statistics_list_[1],
-               statistics_list_[7], statistics_list_[6] / statistics_list_[1], statistics_list_[5]]
+               (statistics_list_[3] / statistics_list_[1]), solved, statistics_list_[0],
+               (statistics_list_[1] ** (1 / statistics_list_[3])), (statistics_list_[4] / statistics_list_[1]),
+               statistics_list_[7], (statistics_list_[6] / statistics_list_[1]), statistics_list_[5],
+               statistics_list_[3] - input_solution]
 
     _statistics_df = _statistics_df.append(pd.Series(new_row, index=_statistics_df.columns, name=_puzzle_counter))
 
     return _statistics_df
 
 
+#   function to get the input puzzles from rh.txt
+def getPuzzles():
+    input_puzzles = []
+    with open("rh.txt", "r") as f:
+        contents = f.readlines()
+
+    i = contents.index('--- RH-input ---\n')
+    for j in range(i + 1, contents.index('--- end RH-input ---\n')):
+        input_puzzles.append(contents[j].split('\n')[0])
+
+    return input_puzzles
+
+
+#   function to get the suggested solutions from rh.txt
+def getSolutions():
+    input_solutions = []
+    with open("rh.txt", "r") as f:
+        contents = f.read()
+        data = contents.split("Soln: ")
+        data = data[1:]
+        for sol in data:
+            curr = sol.split(" .")
+
+            solution = curr[0]
+            solution = solution.replace("\n", " ")
+            solution = solution.split(" ")
+            newSolution = ""
+            for move in solution:
+                if move != "":
+                    newSolution += move + " "
+
+            # Turns the solutions into numbers and summing them
+            solution_sum = sum(1 for x in newSolution if x.isdigit())
+            input_solutions.append(solution_sum)
+
+    # convert the solutions to integers
+
+    return input_solutions
+
+
 if __name__ == '__main__':
+    # getting time limit input
     TIME_LIMIT = float(input("Enter time limit for each puzzle (in seconds) : "))
+    # getting puzzles from rh.txt
+    PUZZLES = getPuzzles()
+    SOLUTIONS = getSolutions()
 
     # initialize some vars
     threadLock = threading.Lock()
     threads = []
-
     pd.set_option('display.max_columns', None)
     columns_for_df = ['Problem ', 'Heuristic name ', 'N ', 'd/N ', 'Success (Y/N) ', 'Time (ms) ', 'EBF ',
-                      'avg H value ', 'Min ', 'Avg ', 'Max ']
+                      'avg H value ', 'Min ', 'Avg ', 'Max ', 'Compare to input ']
     puzzle_counter = 0
     statistics_df = pd.DataFrame(columns=columns_for_df)
     solved_or_failed = [0, 0, 0, 0]
@@ -81,24 +125,22 @@ if __name__ == '__main__':
 
     heuristics = [1, 2, 3, 4]
 
-    # new_board = ProblemGenerator.makePuzzle()
-    # print(new_board)
-
     for heuristic in heuristics:
-        for puzzle in puzzles:
+        for idx, puzzle in enumerate(PUZZLES):
             stop_threads = False
             event = threading.Event()
+            print("------------------------------------ New puzzle ------------------------------------\n")
             # create initial board
             initial_board = initFromString(puzzle)
             print(initial_board.astype('U13'), '\n')
             initial_board = Board(initial_board)
 
             # creates 2 threads - solving for vertical and horizontal successors of the initial board in each thread
-
             thread1 = myThread(1, "Thread-horizontal", 1)
             thread2 = myThread(2, "Thread-vertical", 2)
             root = GameNodes.Node(initial_board)
 
+            # run the threads
             thread1.start()
             thread2.start()
 
@@ -106,6 +148,7 @@ if __name__ == '__main__':
             threads.append(thread1)
             threads.append(thread2)
 
+            # getting the output from the threads
             while True:
                 if not threads[0].is_alive() and threads[1].is_alive():
                     statistics_list = threads[0].returning()
@@ -116,47 +159,60 @@ if __name__ == '__main__':
                     if type(statistics_list[2]) != str:
                         break
                 elif not threads[1].is_alive() and not threads[0].is_alive():
-                    statistics_list = threads[1].returning()
-                    break
+                    statistics_list_1 = threads[1].returning()
+                    statistics_list_0 = threads[0].returning()
+                    if statistics_list_1 and not statistics_list_0:
+                        statistics_list = statistics_list_1
+                    elif statistics_list_0 and not statistics_list_1:
+                        statistics_list = statistics_list_0
+                    else:
+                        if type(statistics_list_1[2]) is not str and type(statistics_list_0[2]) is str:
+                            statistics_list = statistics_list_1
+                        elif type(statistics_list_0[2]) is not str and type(statistics_list_1[2]) is str:
+                            statistics_list = statistics_list_0
+                        else:
+                            if statistics_list_1[1] <= statistics_list_0[1]:
+                                statistics_list = statistics_list_1
+                            else:
+                                statistics_list = statistics_list_0
+                        break
 
-            print("For heuristic", heuristic, puzzle_counter)
-            # insert and displaying statistics
+            # getting statistics and displaying the result
             if statistics_list[0] <= TIME_LIMIT and type(statistics_list[2]) is not str:
                 winner_state = statistics_list[2].astype('U13')
                 winner_state = np.array2string(winner_state.flatten(), precision=2, separator=',', suppress_small=True)
-                print('The Solution is: \n', winner_state, '\n')
-
+                print(' Solution: \n', winner_state, '\n')
                 solved_or_failed[heuristic - 1] += 1
             else:
-                print('The Solution is: \n', statistics_list[2], '\n')
+                print(' Solution: \n', statistics_list[2], '\n')
 
             # insert statistics to the data frame
             if heuristic is 1:
                 statistics_df = insertStatistics(statistics_df, statistics_list, 'Advanced Blocking', puzzle,
-                                                 puzzle_counter)
+                                                 puzzle_counter, SOLUTIONS[idx])
             elif heuristic is 2:
                 statistics_df = insertStatistics(statistics_df, statistics_list, 'Advanced Double Blocking', puzzle,
-                                                 puzzle_counter)
+                                                 puzzle_counter, SOLUTIONS[idx])
             elif heuristic is 3:
                 statistics_df = insertStatistics(statistics_df, statistics_list, 'Vertical From Right', puzzle,
-                                                 puzzle_counter)
+                                                 puzzle_counter, SOLUTIONS[idx])
             else:
                 statistics_df = insertStatistics(statistics_df, statistics_list, 'Uniformed search', puzzle,
-                                                 puzzle_counter)
-
+                                                 puzzle_counter, SOLUTIONS[idx])
             puzzle_counter += 1
+            statistics_list.clear()
+            for thread in threads:
+                thread.join()
 
-    # print final statistics
-    print('Global Statistics table: \n')
-    print(statistics_df)
-
-    compression_opts = dict(method='zip', archive_name='statistics.csv')
-    statistics_df.to_csv('statistics.zip', index=False, compression=compression_opts)
+    # print final statistics and save to csv file:
+        #   print('Global Statistics table: \n', statistics_df)
+        #   compression_opts = dict(method='zip', archive_name='statistics.csv')
+        #   statistics_df.to_csv('statistics.zip', index=False, compression=compression_opts)
 
     # print average statistics for each heuristic
     init_index = 0
     final_index = PUZZLES_NUM - 1
-    heuristics = ['Advanced blocking', 'Advanced double blocking', 'Vertical from right']
+    heuristics = ['Advanced blocking', 'Advanced double blocking', 'Vertical from right', 'Uninformed search']
     print('Average Statistics for each heuristic: \n')
     for idx, heuristic in enumerate(heuristics):
         print('For', heuristic, 'heuristic:')

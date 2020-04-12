@@ -1,2 +1,3 @@
-# Rush hour project implemented by A* search algorithm
-Lab 1 AI course
+# Rush hour solver implemented by A* search Algorithm
+Implemented using A*, Multi-threading, numpy martices, heapq and hash.
+Additional features: Puzzle Generator.
